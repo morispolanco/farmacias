@@ -52,13 +52,17 @@ def suggest_restock(current_stock, predicted_demand, threshold, buffer=1.2):
 st.sidebar.header("Configuración")
 uploaded_file = st.sidebar.file_uploader("Sube tu archivo CSV", type="csv")
 
-# Generar CSV de ejemplo
+# Generar CSV de ejemplo con 30 días históricos por producto
+dates = pd.date_range(start='2024-12-25', end='2025-01-23', freq='D')  # 30 días hasta justo antes de hoy (24/02/2025)
+products = ['Paracetamol', 'Ibuprofeno']
 sample_data = pd.DataFrame({
-    'Fecha': pd.date_range(start='2025-01-01', end='2025-01-15', freq='D'),
-    'Producto': ['Paracetamol'] * 8 + ['Ibuprofeno'] * 7,
-    'Ventas': [10, 12, 15, 8, 9, 11, 14, 13, 5, 6, 7, 4, 5, 6, 8],
-    'Stock': [50, 48, 45, 42, 38, 35, 32, 30, 40, 38, 36, 34, 32, 30, 28],
-    'Fecha_Vencimiento': ['2025-06-01'] * 8 + ['2025-07-15'] * 7
+    'Fecha': list(dates) * len(products),
+    'Producto': [p for p in products for _ in range(30)],
+    'Ventas': [10, 12, 15, 8, 9, 11, 14, 13, 10, 12, 15, 8, 9, 11, 14, 13, 10, 12, 15, 8, 9, 11, 14, 13, 10, 12, 15, 8, 9, 11] + 
+              [5, 6, 7, 4, 5, 6, 8, 7, 5, 6, 7, 4, 5, 6, 8, 7, 5, 6, 7, 4, 5, 6, 8, 7, 5, 6, 7, 4, 5, 6],
+    'Stock': [100, 90, 78, 63, 55, 46, 35, 21, 11, 1, 91, 76, 68, 59, 48, 34, 24, 14, 2, 87, 79, 70, 59, 45, 35, 25, 13, 5, 96, 87] + 
+             [80, 75, 69, 65, 60, 55, 47, 40, 35, 30, 74, 70, 65, 60, 52, 45, 40, 35, 29, 75, 70, 65, 57, 50, 43, 38, 31, 27, 72, 67],
+    'Fecha_Vencimiento': ['2025-06-01'] * 30 + ['2025-07-15'] * 30
 })
 sample_csv = sample_data.to_csv(index=False)
 
