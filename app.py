@@ -52,6 +52,16 @@ def suggest_restock(current_stock, predicted_demand, threshold, buffer=1.2):
 st.sidebar.header("Configuración")
 uploaded_file = st.sidebar.file_uploader("Sube tu archivo CSV", type="csv")
 
+# Generar CSV de ejemplo
+sample_data = pd.DataFrame({
+    'Fecha': pd.date_range(start='2025-01-01', end='2025-01-15', freq='D'),
+    'Producto': ['Paracetamol'] * 8 + ['Ibuprofeno'] * 7,
+    'Ventas': [10, 12, 15, 8, 9, 11, 14, 13, 5, 6, 7, 4, 5, 6, 8],
+    'Stock': [50, 48, 45, 42, 38, 35, 32, 30, 40, 38, 36, 34, 32, 30, 28],
+    'Fecha_Vencimiento': ['2025-06-01'] * 8 + ['2025-07-15'] * 7
+})
+sample_csv = sample_data.to_csv(index=False)
+
 # Guía de uso
 with st.sidebar.expander("¿Cómo usar esta aplicación?"):
     st.write("""
@@ -66,6 +76,13 @@ with st.sidebar.expander("¿Cómo usar esta aplicación?"):
        - Alertas de vencimiento con acciones sugeridas.
     5. **Descarga Reporte**: Exporta los resultados.
     """)
+    st.write("Descarga un archivo CSV de ejemplo:")
+    st.download_button(
+        label="Descargar CSV de Prueba",
+        data=sample_csv,
+        file_name="ejemplo_inventario.csv",
+        mime="text/csv"
+    )
 
 # Opciones de personalización
 forecast_days = st.sidebar.slider("Días de Pronóstico", 7, 90, 30)
