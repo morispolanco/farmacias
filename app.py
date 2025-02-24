@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from prophet import Prophet
+from statsmodels.tsa.arima.model import ARIMA
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import sqlite3
@@ -42,18 +42,19 @@ def load_data(file=None, db_path=None):
         st.error(f"Error al cargar los datos: {e}")
         return None
 
-# Función para pronosticar demanda con Prophet
+# Función para pronosticar demanda con ARIMA
 def forecast_demand(data, product, days=30):
-    sales = data[data['Producto'] == product][['Fecha', 'Ventas']].rename(columns={'Fecha': 'ds', 'Ventas': 'y'})
+    sales = data[data['Producto'] == product]['Ventas'].values
     if len(sales) < 10:
         return None, "Necesitas al menos 10 días de datos históricos para un pronóstico fiable."
     
     try:
-        model = Prophet(daily_seasonality=True)
-        model.fit(sales)
-        future = model.make_future_dataframe(periods=days)
-        forecast = model.predict(future)
-        return forecast[['ds', 'yhat']].tail(days), None
+        model = ARIMA(sales, order=(1, 1, 1))  # Orden ajustable según necesidades
+        model_fit = model.fit()
+        forecast = model_fit.forecast(steps=days)
+        forecast_dates = pd.date_range(start=data['Fecha'].max() + timedelta(days=1), periods=days, freq='D')
+        forecast_df = pd.DataFrame({'ds': forecast_dates, 'yhat': forecast})
+        return forecast_df, None
     except Exception as e:
         return None, f"Error en el modelo de pronóstico: {e}"
 
@@ -152,7 +153,7 @@ if uploaded_file or db_path:
         st.write("### Pronóstico de Demanda")
         with st.expander("¿Qué significa esto?"):
             st.write("""
-            Este gráfico predice las ventas futuras usando un modelo estadístico (Prophet):
+            Este gráfico predice las ventas futuras usando un modelo estadístico (ARIMA):
             - **Azul**: Ventas pasadas.
             - **Rojo punteado**: Pronóstico.
             Úsalo para anticipar cuántas unidades necesitarás.
