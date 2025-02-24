@@ -4,8 +4,6 @@ import numpy as np
 from statsmodels.tsa.arima.model import ARIMA
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
-import sqlite3
-import requests
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -14,20 +12,10 @@ from email.mime.multipart import MIMEMultipart
 st.set_page_config(page_title="Inventory Insight - Farmacia Galeno", layout="wide")
 st.title("Inventory Insight - Gestión Inteligente de Inventarios")
 
-# Función para cargar y limpiar datos desde CSV o SQLite
-def load_data(file=None, db_path=None):
+# Función para cargar y limpiar datos desde CSV
+def load_data(file):
     try:
-        if file:
-            df = pd.read_csv(file)
-        elif db_path:
-            conn = sqlite3.connect(db_path)
-            query = "SELECT * FROM inventario"
-            df = pd.read_sql_query(query, conn)
-            conn.close()
-        else:
-            st.error("Debe proporcionar un archivo CSV o una ruta de base de datos.")
-            return None
-        
+        df = pd.read_csv(file)
         expected_columns = ['Fecha', 'Producto', 'Ventas', 'Stock', 'Fecha_Vencimiento']
         for col in expected_columns:
             if col not in df.columns:
@@ -36,10 +24,10 @@ def load_data(file=None, db_path=None):
         
         df['Fecha'] = pd.to_datetime(df['Fecha'], errors='coerce')
         df['Fecha_Vencimiento'] = pd.to_datetime(df['Fecha_Vencimiento'], errors='coerce')
-        df.dropna(subset=['Fecha', 'Ventas', 'Stock'], inplace=True)
+        df.dropna(subset=['Fecha', 'Ventas', 'Stock'], inplace=True)  # Eliminar filas con datos clave faltantes
         return df
     except Exception as e:
-        st.error(f"Error al cargar los datos: {e}")
+        st.error(f"Error al cargar el archivo: {e}")
         return None
 
 # Función para pronosticar demanda con ARIMA
@@ -87,20 +75,17 @@ def send_email(subject, body, to_email):
     except Exception as e:
         st.error(f"Error al enviar el correo: {e}")
 
-# Función para obtener información adicional del producto desde una API externa
+# Datos simulados para información adicional del producto
+product_info = {
+    "Paracetamol": {"precio": "$5.99", "descripcion": "Analgésico común para el dolor."},
+    "Ibuprofeno": {"precio": "$7.49", "descripcion": "Antiinflamatorio no esteroideo."},
+    "Aspirina": {"precio": "$4.99", "descripcion": "Medicamento para dolores leves."},
+}
+
+# Función para obtener información simulada del producto
 def fetch_product_info(product_name):
-    api_url = f"https://api.product-info.com/info?product={product_name}"
-    try:
-        response = requests.get(api_url)
-        if response.status_code == 200:
-            data = response.json()
-            return data.get("precio", "N/A"), data.get("descripcion", "N/A")
-        else:
-            st.warning(f"No se pudo obtener información para el producto: {product_name}")
-            return "N/A", "N/A"
-    except Exception as e:
-        st.error(f"Error al conectar con la API: {e}")
-        return "N/A", "N/A"
+    info = product_info.get(product_name, {"precio": "N/A", "descripcion": "Información no disponible."})
+    return info["precio"], info["descripcion"]
 
 # Función para calcular la rotación de inventario
 def calculate_inventory_turnover(data, product):
@@ -127,7 +112,6 @@ def suggest_purchase_strategy(current_stock, predicted_demand, threshold, buffer
 # Sidebar para configuraciones
 st.sidebar.header("Configuración")
 uploaded_file = st.sidebar.file_uploader("Sube tu archivo CSV", type="csv")
-db_path = st.sidebar.text_input("O conecta una base de datos SQLite:", placeholder="ruta/a/tu/base_de_datos.db")
 
 forecast_days = st.sidebar.slider("Días de Pronóstico", 7, 90, 30)
 stock_threshold = st.sidebar.number_input("Umbral de Stock Mínimo", min_value=0, value=10)
@@ -137,8 +121,8 @@ buffer_factor = st.sidebar.number_input("Factor de Buffer (1.0-2.0)", min_value=
 bulk_discount_threshold = st.sidebar.number_input("Umbral de Descuento por Volumen", min_value=0, value=100)
 bulk_discount_rate = st.sidebar.number_input("Tasa de Descuento por Volumen (%)", min_value=0.0, max_value=1.0, value=0.1)
 
-if uploaded_file or db_path:
-    data = load_data(uploaded_file, db_path)
+if uploaded_file:
+    data = load_data(uploaded_file)
     if data is not None:
         st.sidebar.success("Datos cargados correctamente")
         products = data['Producto'].unique()
@@ -222,7 +206,7 @@ if uploaded_file or db_path:
         else:
             st.success(f"No hay productos próximos a vencer en los próximos {expiration_days} días.")
 
-        # Información adicional del producto
+        # Información simulada del producto
         precio, descripcion = fetch_product_info(selected_product)
         st.write(f"### Información Adicional para {selected_product}")
         col1, col2 = st.columns(2)
@@ -277,4 +261,4 @@ if uploaded_file or db_path:
             mime="text/csv"
         )
 else:
-    st.info("Sube un archivo CSV o conecta una base de datos SQLite.")
+    st.info("Sube un archivo CSV con: 'Fecha', 'Producto', 'Ventas', 'Stock', 'Fecha_Vencimiento'.")
