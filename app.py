@@ -180,4 +180,4 @@ else:
 
 # Pie de página
 st.sidebar.markdown("---")
-st.sidebar.write("Desarrollado por xAI para Farmacia Galeno - 2025")
+st.sidebar.write("Desarrollado por xAI para Farmacia XYZ - 2025")
